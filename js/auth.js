@@ -1,5 +1,5 @@
 async function login() {
-    const returnUrl = "https://caserav.github.io/housezen-app/";
+    const returnUrl = "https://housezenapp.github.io/housezen/";
 
     const { data, error } = await _supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -24,10 +24,10 @@ async function logout() {
 
     if (error) {
         console.error("Error al cerrar sesión:", error.message);
-        window.location.href = "https://caserav.github.io/housezen-app/";
+        window.location.href = "https://housezenapp.github.io/housezen/";
     } else {
         console.log("Sesión cerrada con éxito");
-        window.location.href = "https://caserav.github.io/housezen-app/";
+        window.location.href = "https://housezenapp.github.io/housezen/";
     }
 }
 
