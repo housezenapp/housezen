@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Housezen App</title>
+
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Housezen">
+    <meta name="theme-color" content="#2A9D8F">
+
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=7">
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+    <div id="install-banner">
+        <span class="install-close" onclick="dismissInstallBanner()">×</span>
+        <div class="install-header">
+            <div class="install-icon">H</div>
+            <div>
+                <strong style="display:block; margin-bottom: 2px;">Instala Housezen</strong>
+                <span style="font-size:0.8rem; opacity:0.85;">Reporta averías más rápido</span>
+            </div>
+        </div>
+        <div id="install-instructions" class="install-steps"></div>
+    </div>
+
+    <div id="toast">
+        <i class="fa-solid fa-circle-info"></i>
+        <span id="toast-text"></span>
+    </div>
+
+    <div id="login-page">
+        <div class="login-logo">
+            <i class="fa-solid fa-house-chimney"></i>
+        </div>
+        <h1 class="login-title">Housezen</h1>
+        <p class="login-subtitle">Tu hogar, bajo control</p>
+        <button class="google-btn" onclick="login()">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="20" alt="Google">
+            Acceder con Google
+        </button>
+    </div>
+
+    <div id="setup-modal">
+        <div class="modal-card">
+            <div class="modal-icon">
+                <i class="fa-solid fa-house-lock"></i>
+            </div>
+            <h3>Vincular Vivienda</h3>
+            <p>Introduce el código que te ha facilitado tu casero para poder reportar incidencias.</p>
+            <button class="submit-btn" onclick="showPage('profile'); document.getElementById('setup-modal').style.display='none';">
+                <i class="fa-solid fa-arrow-right"></i>
+                Completar Perfil ahora
+            </button>
+        </div>
+    </div>
+
+    <div id="app-content">
+        <div class="top-bar">
+            <button class="menu-btn" onclick="toggleMenu()" aria-label="Abrir menú">
+                <i class="fa-solid fa-bars-staggered fa-lg"></i>
+            </button>
+            <div class="logo-text">
+                <div class="logo-h">H</div>
+                Housezen
+            </div>
+        </div>
+
+        <div class="menu-overlay" id="overlay" onclick="toggleMenu()"></div>
+
+        <nav class="sidebar-nav" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-label">Inquilino</div>
+                <div class="sidebar-username" id="user-name">...</div>
+            </div>
+            <div class="nav-item active" data-path="home" onclick="showPage('home')">
+                <i class="fa-solid fa-plus-square"></i>
+                <span>Nueva incidencia</span>
+            </div>
+            <div class="nav-item" data-path="incidencias" onclick="showPage('incidencias')">
+                <i class="fa-solid fa-rectangle-list"></i>
+                <span>Mis Reportes</span>
+            </div>
+            <div class="nav-item" data-path="profile" onclick="showPage('profile')">
+                <i class="fa-solid fa-id-card"></i>
+                <span>Mi Perfil</span>
+            </div>
+            <div class="nav-item nav-logout" onclick="logout()">
+                <i class="fa-solid fa-power-off"></i>
+                <span>Cerrar sesión</span>
+            </div>
+        </nav>
+
+        <main>
+            <div id="page-home" class="page active">
+                <h1 class="page-title">Nueva Incidencia</h1>
+
+                <form id="incidentForm">
+                    <div class="card">
+                        <h2 class="card-header">
+                            <span class="icon"><i class="fa-solid fa-location-dot"></i></span>
+                            Vivienda actual
+                        </h2>
+                        <div class="form-group">
+                            <label>Dirección</label>
+                            <input type="text" id="inc-address" readonly placeholder="Completa tu perfil para vincular">
+                        </div>
+                        <div class="form-group">
+                            <label>Teléfono de contacto</label>
+                            <input type="text" id="inc-phone" readonly placeholder="Añade tu móvil en perfil">
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h2 class="card-header">
+                            <span class="icon"><i class="fa-solid fa-grip"></i></span>
+                            Categoría de avería
+                        </h2>
+                        <div class="category-grid">
+                            <label class="cat-option">
+                                <input type="radio" name="category" value="Fontanería" required>
+                                <div class="cat-card">
+                                    <i class="fa-solid fa-droplet"></i>
+                                    <span>Fontanería</span>
+                                </div>
+                            </label>
+                            <label class="cat-option">
+                                <input type="radio" name="category" value="Electricidad" required>
+                                <div class="cat-card">
+                                    <i class="fa-solid fa-bolt-lightning"></i>
+                                    <span>Luz</span>
+                                </div>
+                            </label>
+                            <label class="cat-option">
+                                <input type="radio" name="category" value="Electrodomésticos" required>
+                                <div class="cat-card">
+                                    <i class="fa-solid fa-plug"></i>
+                                    <span>Electro</span>
+                                </div>
+                            </label>
+                            <label class="cat-option">
+                                <input type="radio" name="category" value="Cerrajería" required>
+                                <div class="cat-card">
+                                    <i class="fa-solid fa-key"></i>
+                                    <span>Llaves</span>
+                                </div>
+                            </label>
+                            <label class="cat-option" id="otros-btn">
+                                <input type="radio" id="otros-radio" name="category" value="Otros" required>
+                                <div class="cat-card">
+                                    <i class="fa-solid fa-ellipsis"></i>
+                                    <span>Otros</span>
+                                </div>
+                            </label>
+                        </div>
+                        <div id="otros-dropdown" class="otros-dropdown" style="display: none; margin-top: 15px;">
+                            <select id="otros-select">
+                                <option value="">Selecciona una opción...</option>
+                                <option value="Internet">Internet</option>
+                                <option value="Calefacción">Calefacción</option>
+                                <option value="Albañilería">Albañilería</option>
+                                <option value="Aire Acondicionado">Aire Acondicionado</option>
+                                <option value="Televisión">Televisión</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h2 class="card-header">
+                            <span class="icon"><i class="fa-solid fa-comment-dots"></i></span>
+                            Detalles técnicos
+                        </h2>
+                        <div class="form-group">
+                            <label>Breve resumen</label>
+                            <input type="text" name="title" placeholder="Ej: Fuga en el fregadero" maxlength="100" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Descripción detallada</label>
+                            <textarea name="description" rows="4" placeholder="Explícanos qué ocurre..." maxlength="500" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Urgencia</label>
+                            <div class="priority-group">
+                                <div class="priority-btn" data-level="baja">Baja</div>
+                                <div class="priority-btn" data-level="media">Media</div>
+                                <div class="priority-btn" data-level="alta">Alta</div>
+                            </div>
+                            <input type="hidden" name="urgency" id="urgency-input" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="submit-btn" id="btnSubmit">
+                        Enviar Reporte
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+
+            <div id="page-incidencias" class="page">
+                <h1 class="page-title">Mis Reportes</h1>
+                <div id="incidents-list-container"></div>
+            </div>
+
+            <div id="page-profile" class="page">
+                <h1 class="page-title">Mi Perfil</h1>
+
+                <div class="card">
+                    <h2 class="card-header">
+                        <span class="icon"><i class="fa-solid fa-user-check"></i></span>
+                        Información personal
+                    </h2>
+                    <div class="form-group">
+                        <label>Nombre completo</label>
+                        <input type="text" id="profile-name" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Email de contacto</label>
+                        <input type="email" id="profile-email" readonly>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2 class="card-header">
+                        <span class="icon"><i class="fa-solid fa-house-medical"></i></span>
+                        Vincular Vivienda
+                    </h2>
+                    
+                    <div class="form-group">
+                        <label>Código de Referencia</label>
+                        <input type="text" id="user-reference" placeholder="Ej: 1234ABC" style="text-transform: uppercase; font-weight: bold; letter-spacing: 1px;">
+                        <small id="ref-status">Introduce el código de 7 dígitos de tu casero.</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Dirección Asignada</label>
+                        <input type="text" id="user-address" readonly style="background: #f5f5f5; color: #666;" placeholder="Se cargará automáticamente">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Móvil de contacto</label>
+                        <input type="tel" id="user-phone" placeholder="Tu número de teléfono">
+                    </div>
+
+                    <button class="submit-btn" id="btnSave" onclick="saveUserData()">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        Guardar y Vincular
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/config.js?v=1"></script>
+    <script src="js/ui.js?v=1"></script>
+    <script src="js/auth.js?v=3"></script>
+    <script src="js/profile.js?v=1"></script>
+    <script src="js/incidents.js?v=5"></script>
+    <script src="js/app.js?v=1"></script>
+</body>
+</html>
