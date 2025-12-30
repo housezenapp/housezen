@@ -13,6 +13,8 @@ async function saveUserData() {
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Validando...';
 
     try {
+        console.log('🔍 Buscando propiedad con referencia:', reference);
+
         // 2. BUSCAMOS LA PROPIEDAD: Verificamos que el código existe en la tabla del casero
         const { data: propiedad, error: propError } = await _supabase
             .from('propiedades')
@@ -20,16 +22,26 @@ async function saveUserData() {
             .ilike('id', reference)
             .maybeSingle();
 
-        if (propError) throw propError;
+        console.log('📦 Resultado de búsqueda:', { propiedad, propError });
+
+        if (propError) {
+            console.error('❌ Error al buscar propiedad:', propError);
+            throw propError;
+        }
 
         if (!propiedad) {
+            console.warn('⚠️ No se encontró propiedad con ese código');
             showToast("Código no encontrado. Revisa con tu casero.");
             btn.disabled = false;
             btn.innerHTML = 'Guardar y Vincular';
             return;
         }
 
+        console.log('✅ Propiedad encontrada:', propiedad.direccion_completa);
+
         // 3. GUARDAMOS EN PERFILES: Si el código es válido, actualizamos solo dirección y teléfono
+        console.log('💾 Actualizando perfil del usuario:', currentUser.id);
+
         const { error: perfilError } = await _supabase
             .from('perfiles')
             .update({
@@ -38,7 +50,14 @@ async function saveUserData() {
             })
             .eq('id', currentUser.id);
 
-        if (perfilError) throw perfilError;
+        console.log('📝 Resultado de actualización:', { perfilError });
+
+        if (perfilError) {
+            console.error('❌ Error al actualizar perfil:', perfilError);
+            throw perfilError;
+        }
+
+        console.log('✅ Perfil actualizado correctamente');
 
         // 4. ACTUALIZAMOS LA INTERFAZ
         // Escribimos la dirección en el campo bloqueado del perfil
