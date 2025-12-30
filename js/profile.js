@@ -73,14 +73,34 @@ async function saveUserData() {
         // 4. CREAR O ACTUALIZAR RELACIÓN EN perfil_propiedades
         console.log('🔗 Vinculando perfil con propiedad');
 
-        const { error: relacionError } = await _supabase
+        // Primero, verificar si ya existe una vinculación
+        const { data: existingLink } = await _supabase
             .from('perfil_propiedades')
-            .upsert({
-                id_perfil: currentUser.id,
-                id_propiedad: reference
-            }, {
-                onConflict: 'id_perfil'
-            });
+            .select('id_perfil')
+            .eq('id_perfil', currentUser.id)
+            .maybeSingle();
+
+        let relacionError = null;
+
+        if (existingLink) {
+            // Si existe, actualizar
+            console.log('🔄 Actualizando vinculación existente');
+            const { error } = await _supabase
+                .from('perfil_propiedades')
+                .update({ id_propiedad: reference })
+                .eq('id_perfil', currentUser.id);
+            relacionError = error;
+        } else {
+            // Si no existe, crear nueva
+            console.log('➕ Creando nueva vinculación');
+            const { error } = await _supabase
+                .from('perfil_propiedades')
+                .insert({
+                    id_perfil: currentUser.id,
+                    id_propiedad: reference
+                });
+            relacionError = error;
+        }
 
         console.log('📝 Resultado de vinculación:', { relacionError });
 
