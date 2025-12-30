@@ -14,6 +14,18 @@ async function saveUserData() {
 
     try {
         console.log('🔍 Buscando propiedad con referencia:', reference);
+        console.log('📏 Longitud de la referencia:', reference.length);
+        console.log('🔢 Códigos de caracteres:', Array.from(reference).map(c => c.charCodeAt(0)));
+
+        // Primero, listemos todas las propiedades para ver qué hay en la tabla
+        const { data: todasPropiedades, error: listError } = await _supabase
+            .from('propiedades')
+            .select('id, direccion_completa');
+
+        console.log('📋 Todas las propiedades en la tabla:', todasPropiedades);
+        if (todasPropiedades) {
+            console.log('🔑 IDs disponibles:', todasPropiedades.map(p => `"${p.id}" (longitud: ${p.id.length})`));
+        }
 
         // 2. BUSCAMOS LA PROPIEDAD: Verificamos que el código existe en la tabla del casero
         const { data: propiedad, error: propError } = await _supabase
