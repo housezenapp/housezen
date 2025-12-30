@@ -115,6 +115,11 @@ async function handleUserSession(session) {
             document.getElementById('inc-phone').value = currentProfile.telefono;
             document.getElementById('user-address').value = currentProfile.direccion;
             document.getElementById('user-phone').value = currentProfile.telefono;
+
+            // Cargar el código de referencia si existe
+            if (currentProfile.codigo_referencia) {
+                document.getElementById('user-reference').value = currentProfile.codigo_referencia;
+            }
         }
     } catch (err) {
         console.error('Error in handleUserSession:', err);

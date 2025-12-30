@@ -51,14 +51,15 @@ async function saveUserData() {
 
         console.log('✅ Propiedad encontrada:', propiedad.direccion_completa);
 
-        // 3. GUARDAMOS EN PERFILES: Si el código es válido, actualizamos solo dirección y teléfono
+        // 3. GUARDAMOS EN PERFILES: Si el código es válido, actualizamos dirección, teléfono y código de referencia
         console.log('💾 Actualizando perfil del usuario:', currentUser.id);
 
         const { error: perfilError } = await _supabase
             .from('perfiles')
             .update({
                 direccion: propiedad.direccion_completa, // Heredamos la dirección
-                telefono: phone
+                telefono: phone,
+                codigo_referencia: reference // Guardamos el código de referencia
             })
             .eq('id', currentUser.id);
 
