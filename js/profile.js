@@ -1,6 +1,6 @@
 async function saveUserData() {
     // 1. Capturamos los datos del nuevo HTML
-    const reference = document.getElementById('user-reference').value.trim().toUpperCase();
+    const reference = document.getElementById('user-reference').value.trim();
     const phone = document.getElementById('user-phone').value.trim();
 
     if (!reference || !phone) {
@@ -17,7 +17,7 @@ async function saveUserData() {
         const { data: propiedad, error: propError } = await _supabase
             .from('propiedades')
             .select('direccion_completa')
-            .eq('id', reference)
+            .ilike('id', reference)
             .maybeSingle();
 
         if (propError) throw propError;
