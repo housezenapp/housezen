@@ -13,67 +13,31 @@ async function saveUserData() {
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Validando...';
 
     try {
-        console.log('🔍 Buscando propiedad con referencia:', reference);
-        console.log('📏 Longitud de la referencia:', reference.length);
-        console.log('🔢 Códigos de caracteres:', Array.from(reference).map(c => c.charCodeAt(0)));
-
-        // Primero, listemos todas las propiedades para ver qué hay en la tabla
-        const { data: todasPropiedades, error: listError } = await _supabase
-            .from('propiedades')
-            .select('id, direccion_completa');
-
-        console.log('📋 Todas las propiedades en la tabla:', todasPropiedades);
-        if (todasPropiedades) {
-            console.log('🔑 IDs disponibles:', todasPropiedades.map(p => `"${p.id}" (longitud: ${p.id.length})`));
-        }
-
-        // 2. BUSCAMOS LA PROPIEDAD: Verificamos que el código existe en la tabla del casero
+        // Buscar la propiedad por código de referencia
         const { data: propiedad, error: propError } = await _supabase
             .from('propiedades')
             .select('direccion_completa')
             .eq('id', reference)
             .maybeSingle();
 
-        console.log('📦 Resultado de búsqueda:', { propiedad, propError });
-
-        if (propError) {
-            console.error('❌ Error al buscar propiedad:', propError);
-            throw propError;
-        }
+        if (propError) throw propError;
 
         if (!propiedad) {
-            console.warn('⚠️ No se encontró propiedad con ese código');
             showToast("Código no encontrado. Revisa con tu casero.");
             btn.disabled = false;
             btn.innerHTML = 'Guardar y Vincular';
             return;
         }
 
-        console.log('✅ Propiedad encontrada:', propiedad.direccion_completa);
-
-        // 3. GUARDAMOS EN PERFILES: Actualizamos solo el teléfono
-        console.log('💾 Actualizando perfil del usuario:', currentUser.id);
-
+        // Actualizar el teléfono en el perfil
         const { error: perfilError } = await _supabase
             .from('perfiles')
-            .update({
-                telefono: phone
-            })
+            .update({ telefono: phone })
             .eq('id', currentUser.id);
 
-        console.log('📝 Resultado de actualización perfil:', { perfilError });
+        if (perfilError) throw perfilError;
 
-        if (perfilError) {
-            console.error('❌ Error al actualizar perfil:', perfilError);
-            throw perfilError;
-        }
-
-        console.log('✅ Perfil actualizado correctamente');
-
-        // 4. CREAR O ACTUALIZAR RELACIÓN EN perfil_propiedades
-        console.log('🔗 Vinculando perfil con propiedad');
-
-        // Primero, verificar si ya existe una vinculación
+        // Crear o actualizar relación en perfil_propiedades
         const { data: existingLink } = await _supabase
             .from('perfil_propiedades')
             .select('id_perfil')
@@ -83,16 +47,14 @@ async function saveUserData() {
         let relacionError = null;
 
         if (existingLink) {
-            // Si existe, actualizar
-            console.log('🔄 Actualizando vinculación existente');
+            // Actualizar vinculación existente
             const { error } = await _supabase
                 .from('perfil_propiedades')
                 .update({ id_propiedad: reference })
                 .eq('id_perfil', currentUser.id);
             relacionError = error;
         } else {
-            // Si no existe, crear nueva
-            console.log('➕ Creando nueva vinculación');
+            // Crear nueva vinculación
             const { error } = await _supabase
                 .from('perfil_propiedades')
                 .insert({
@@ -102,17 +64,9 @@ async function saveUserData() {
             relacionError = error;
         }
 
-        console.log('📝 Resultado de vinculación:', { relacionError });
+        if (relacionError) throw relacionError;
 
-        if (relacionError) {
-            console.error('❌ Error al vincular perfil con propiedad:', relacionError);
-            throw relacionError;
-        }
-
-        console.log('✅ Vinculación creada correctamente');
-
-        // 5. ACTUALIZAMOS LA INTERFAZ
-        // Escribimos la dirección en el campo bloqueado del perfil
+        // Actualizar la interfaz
         document.getElementById('user-address').value = propiedad.direccion_completa;
         document.getElementById('user-reference').value = reference;
 

@@ -119,8 +119,6 @@ async function handleUserSession(session) {
             console.error('Error loading property link:', vinculacionError);
         }
 
-        console.log('📋 Vinculación encontrada:', vinculacion);
-
         // Si hay vinculación, obtener los datos de la propiedad
         let propiedadData = null;
         if (vinculacion && vinculacion.id_propiedad) {
@@ -136,8 +134,6 @@ async function handleUserSession(session) {
                 propiedadData = propiedad;
             }
         }
-
-        console.log('🏠 Propiedad cargada:', propiedadData);
 
         // Verificar si el perfil está completo
         if (!currentProfile || !currentProfile.telefono || !propiedadData) {

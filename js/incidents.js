@@ -139,6 +139,13 @@ async function handleSubmit(e) {
     btn.disabled = true;
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando...';
 
+    // Obtener el id de la propiedad vinculada
+    const { data: vinculacion } = await _supabase
+        .from('perfil_propiedades')
+        .select('id_propiedad')
+        .eq('id_perfil', currentUser.id)
+        .maybeSingle();
+
     const { error } = await _supabase.from('incidencias').insert([{
         titulo: title,
         descripcion: e.target.description.value.trim(),
@@ -147,8 +154,10 @@ async function handleSubmit(e) {
         direccion: document.getElementById('inc-address').value,
         telefono: document.getElementById('inc-phone').value,
         user_id: currentUser.id,
+        propiedad_id: vinculacion?.id_propiedad || null,
         nombre_inquilino: currentUser.user_metadata.full_name,
-        email_inquilino: currentUser.email
+        email_inquilino: currentUser.email,
+        estado: 'Enviada'
     }]);
 
     if (error) {
