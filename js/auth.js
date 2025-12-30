@@ -75,12 +75,30 @@ async function handleUserSession(session) {
 
         const fullName = currentUser.user_metadata?.full_name || "Usuario";
         const firstName = fullName.split(' ')[0];
+        const userEmail = currentUser.email || '';
 
         document.getElementById('user-name').innerText = firstName;
         document.getElementById('profile-name').value = fullName;
-        document.getElementById('profile-email').value = currentUser.email || '';
+        document.getElementById('profile-email').value = userEmail;
 
-        const { data: profile, error } = await _supabase
+        // Crear o actualizar el perfil automáticamente con los datos de Google
+        const { error: upsertError } = await _supabase
+            .from('perfiles')
+            .upsert({
+                id: currentUser.id,
+                email: userEmail,
+                nombre: fullName
+            }, {
+                onConflict: 'id',
+                ignoreDuplicates: false
+            });
+
+        if (upsertError) {
+            console.error('Error creating/updating profile:', upsertError);
+        }
+
+        // Cargar el perfil completo para verificar datos adicionales
+        const { data: currentProfile, error } = await _supabase
             .from('perfiles')
             .select('*')
             .eq('id', currentUser.id)
@@ -90,13 +108,13 @@ async function handleUserSession(session) {
             console.error('Error loading profile:', error);
         }
 
-        if (!profile || !profile.direccion || !profile.telefono) {
+        if (!currentProfile || !currentProfile.direccion || !currentProfile.telefono) {
             document.getElementById('setup-modal').style.display = 'flex';
         } else {
-            document.getElementById('inc-address').value = profile.direccion;
-            document.getElementById('inc-phone').value = profile.telefono;
-            document.getElementById('user-address').value = profile.direccion;
-            document.getElementById('user-phone').value = profile.telefono;
+            document.getElementById('inc-address').value = currentProfile.direccion;
+            document.getElementById('inc-phone').value = currentProfile.telefono;
+            document.getElementById('user-address').value = currentProfile.direccion;
+            document.getElementById('user-phone').value = currentProfile.telefono;
         }
     } catch (err) {
         console.error('Error in handleUserSession:', err);

@@ -29,15 +29,14 @@ async function saveUserData() {
             return;
         }
 
-        // 3. GUARDAMOS EN PERFILES: Si el código es válido, actualizamos al inquilino
+        // 3. GUARDAMOS EN PERFILES: Si el código es válido, actualizamos solo dirección y teléfono
         const { error: perfilError } = await _supabase
-            .from('perfiles') // Tu tabla en español
-            .upsert({
-                id: currentUser.id,
-                codigo_referencia: reference, // La nueva columna que creamos
+            .from('perfiles')
+            .update({
                 direccion: propiedad.direccion_completa, // Heredamos la dirección
                 telefono: phone
-            });
+            })
+            .eq('id', currentUser.id);
 
         if (perfilError) throw perfilError;
 
