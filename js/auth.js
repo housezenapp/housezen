@@ -97,29 +97,60 @@ async function handleUserSession(session) {
             console.error('Error creating/updating profile:', upsertError);
         }
 
-        // Cargar el perfil completo para verificar datos adicionales
-        const { data: currentProfile, error } = await _supabase
+        // Cargar el perfil completo
+        const { data: currentProfile, error: profileError } = await _supabase
             .from('perfiles')
             .select('*')
             .eq('id', currentUser.id)
             .maybeSingle();
 
-        if (error) {
-            console.error('Error loading profile:', error);
+        if (profileError) {
+            console.error('Error loading profile:', profileError);
         }
 
-        if (!currentProfile || !currentProfile.direccion || !currentProfile.telefono) {
+        // Cargar la propiedad vinculada desde perfil_propiedades
+        const { data: vinculacion, error: vinculacionError } = await _supabase
+            .from('perfil_propiedades')
+            .select('id_propiedad')
+            .eq('id_perfil', currentUser.id)
+            .maybeSingle();
+
+        if (vinculacionError) {
+            console.error('Error loading property link:', vinculacionError);
+        }
+
+        console.log('📋 Vinculación encontrada:', vinculacion);
+
+        // Si hay vinculación, obtener los datos de la propiedad
+        let propiedadData = null;
+        if (vinculacion && vinculacion.id_propiedad) {
+            const { data: propiedad, error: propError } = await _supabase
+                .from('propiedades')
+                .select('id, direccion_completa')
+                .eq('id', vinculacion.id_propiedad)
+                .maybeSingle();
+
+            if (propError) {
+                console.error('Error loading property:', propError);
+            } else {
+                propiedadData = propiedad;
+            }
+        }
+
+        console.log('🏠 Propiedad cargada:', propiedadData);
+
+        // Verificar si el perfil está completo
+        if (!currentProfile || !currentProfile.telefono || !propiedadData) {
             document.getElementById('setup-modal').style.display = 'flex';
         } else {
-            document.getElementById('inc-address').value = currentProfile.direccion;
-            document.getElementById('inc-phone').value = currentProfile.telefono;
-            document.getElementById('user-address').value = currentProfile.direccion;
-            document.getElementById('user-phone').value = currentProfile.telefono;
+            // Cargar datos de la propiedad
+            document.getElementById('inc-address').value = propiedadData.direccion_completa;
+            document.getElementById('user-address').value = propiedadData.direccion_completa;
+            document.getElementById('user-reference').value = propiedadData.id;
 
-            // Cargar el código de referencia si existe
-            if (currentProfile.codigo_referencia) {
-                document.getElementById('user-reference').value = currentProfile.codigo_referencia;
-            }
+            // Cargar teléfono del perfil
+            document.getElementById('inc-phone').value = currentProfile.telefono;
+            document.getElementById('user-phone').value = currentProfile.telefono;
         }
     } catch (err) {
         console.error('Error in handleUserSession:', err);

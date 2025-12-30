@@ -51,19 +51,17 @@ async function saveUserData() {
 
         console.log('✅ Propiedad encontrada:', propiedad.direccion_completa);
 
-        // 3. GUARDAMOS EN PERFILES: Si el código es válido, actualizamos dirección, teléfono y código de referencia
+        // 3. GUARDAMOS EN PERFILES: Actualizamos solo el teléfono
         console.log('💾 Actualizando perfil del usuario:', currentUser.id);
 
         const { error: perfilError } = await _supabase
             .from('perfiles')
             .update({
-                direccion: propiedad.direccion_completa, // Heredamos la dirección
-                telefono: phone,
-                codigo_referencia: reference // Guardamos el código de referencia
+                telefono: phone
             })
             .eq('id', currentUser.id);
 
-        console.log('📝 Resultado de actualización:', { perfilError });
+        console.log('📝 Resultado de actualización perfil:', { perfilError });
 
         if (perfilError) {
             console.error('❌ Error al actualizar perfil:', perfilError);
@@ -72,10 +70,32 @@ async function saveUserData() {
 
         console.log('✅ Perfil actualizado correctamente');
 
-        // 4. ACTUALIZAMOS LA INTERFAZ
+        // 4. CREAR O ACTUALIZAR RELACIÓN EN perfil_propiedades
+        console.log('🔗 Vinculando perfil con propiedad');
+
+        const { error: relacionError } = await _supabase
+            .from('perfil_propiedades')
+            .upsert({
+                id_perfil: currentUser.id,
+                id_propiedad: reference
+            }, {
+                onConflict: 'id_perfil'
+            });
+
+        console.log('📝 Resultado de vinculación:', { relacionError });
+
+        if (relacionError) {
+            console.error('❌ Error al vincular perfil con propiedad:', relacionError);
+            throw relacionError;
+        }
+
+        console.log('✅ Vinculación creada correctamente');
+
+        // 5. ACTUALIZAMOS LA INTERFAZ
         // Escribimos la dirección en el campo bloqueado del perfil
         document.getElementById('user-address').value = propiedad.direccion_completa;
-        
+        document.getElementById('user-reference').value = reference;
+
         // También la actualizamos en el formulario de incidencias (home)
         if (document.getElementById('inc-address')) {
             document.getElementById('inc-address').value = propiedad.direccion_completa;
