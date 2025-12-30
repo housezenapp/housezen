@@ -146,7 +146,7 @@ async function handleSubmit(e) {
         .eq('id_perfil', currentUser.id)
         .maybeSingle();
 
-    const { error } = await _supabase.from('incidencias').insert([{
+    const incidenciaData = {
         titulo: title,
         descripcion: e.target.description.value.trim(),
         categoria: category.value,
@@ -158,7 +158,14 @@ async function handleSubmit(e) {
         nombre_inquilino: currentUser.user_metadata.full_name,
         email_inquilino: currentUser.email,
         estado: 'Enviada'
-    }]);
+    };
+
+    console.log('📤 Datos a enviar:', incidenciaData);
+    console.log('🔍 Tipo de propiedad_id:', typeof incidenciaData.propiedad_id);
+
+    const { error } = await _supabase.from('incidencias').insert([incidenciaData]);
+
+    console.log('📥 Respuesta:', { error });
 
     if (error) {
         showToast('Error al enviar');
