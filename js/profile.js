@@ -15,9 +15,9 @@ async function saveUserData() {
     try {
         // 2. BUSCAMOS LA PROPIEDAD: Verificamos que el código existe en la tabla del casero
         const { data: propiedad, error: propError } = await _supabase
-            .from('propiedades') // Tabla del casero
+            .from('propiedades')
             .select('direccion_completa')
-            .eq('referencia', reference)
+            .eq('id', reference)
             .maybeSingle();
 
         if (propError) throw propError;
