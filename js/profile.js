@@ -38,27 +38,33 @@ async function saveUserData() {
         if (perfilError) throw perfilError;
 
         // Crear o actualizar relación en perfil_propiedades
+      // 1. Buscamos si ya existe el vínculo usando el nuevo nombre de columna
         const { data: existingLink } = await _supabase
             .from('perfil_propiedades')
-            .select('id_perfil')
-            .eq('id_perfil', currentUser.id)
+            .select('id_perfil_inquilino') // Cambiado de id_perfil
+            .eq('id_perfil_inquilino', currentUser.id) // Cambiado de id_perfil
             .maybeSingle();
 
         let relacionError = null;
 
         if (existingLink) {
-            // Actualizar vinculación existente
+            // 2. Actualizar vinculación existente
             const { error } = await _supabase
                 .from('perfil_propiedades')
-                .update({ id_propiedad: reference })
-                .eq('id_perfil', currentUser.id);
+                .update({ 
+                    id_propiedad: reference
+                    // Aquí podrías actualizar también id_perfil_casero si lo buscas antes
+                })
+                .eq('id_perfil_inquilino', currentUser.id); // Cambiado de id_perfil
             relacionError = error;
         } else {
-            // Crear nueva vinculación
+            // 3. Crear nueva vinculación
+            // Nota: Para que el casero vea al inquilino, aquí deberíamos 
+            // haber buscado antes el casero_id de la tabla propiedades.
             const { error } = await _supabase
                 .from('perfil_propiedades')
                 .insert({
-                    id_perfil: currentUser.id,
+                    id_perfil_inquilino: currentUser.id, // Cambiado de id_perfil
                     id_propiedad: reference
                 });
             relacionError = error;
