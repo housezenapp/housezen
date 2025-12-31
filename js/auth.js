@@ -87,7 +87,8 @@ async function handleUserSession(session) {
             .upsert({
                 id: currentUser.id,
                 email: userEmail,
-                nombre: fullName
+                nombre: fullName,
+                rol: 'inquilino' // <--- AÑADIR ESTA LÍNEA
             }, {
                 onConflict: 'id',
                 ignoreDuplicates: false
