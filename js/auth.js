@@ -113,7 +113,7 @@ async function handleUserSession(session) {
         const { data: vinculacion, error: vinculacionError } = await _supabase
             .from('perfil_propiedades')
             .select('id_propiedad')
-            .eq('id_perfil', currentUser.id)
+            .eq('id_perfil_inquilino', currentUser.id)
             .maybeSingle();
 
         if (vinculacionError) {
