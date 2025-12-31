@@ -13,10 +13,10 @@ async function saveUserData() {
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Validando...';
 
     try {
-        // Buscar la propiedad por código de referencia
+        // Buscar la propiedad por código de referencia (TABLA PROPIEDADES)
         const { data: propiedad, error: propError } = await _supabase
             .from('propiedades')
-            .select('direccion_completa')
+            .select('direccion_completa, perfil_id') // Mantenemos perfil_id para el casero
             .eq('id', reference)
             .maybeSingle();
 
@@ -37,12 +37,13 @@ async function saveUserData() {
 
         if (perfilError) throw perfilError;
 
-        // Crear o actualizar relación en perfil_propiedades
-      // 1. Buscamos si ya existe el vínculo usando el nuevo nombre de columna
+        // --- AQUÍ ESTABA EL FALLO: Vinculación en perfil_propiedades ---
+        
+        // 1. Buscamos si ya existe el vínculo
         const { data: existingLink } = await _supabase
             .from('perfil_propiedades')
-            .select('id_perfil_inquilino') // Cambiado de id_perfil
-            .eq('id_perfil_inquilino', currentUser.id) // Cambiado de id_perfil
+            .select('id_perfil_inquilino')
+            .eq('id_perfil_inquilino', currentUser.id)
             .maybeSingle();
 
         let relacionError = null;
@@ -52,31 +53,29 @@ async function saveUserData() {
             const { error } = await _supabase
                 .from('perfil_propiedades')
                 .update({ 
-                    id_propiedad: reference
-                    // Aquí podrías actualizar también id_perfil_casero si lo buscas antes
+                    codigo_propiedad: reference, // CAMBIADO: de id_propiedad a codigo_propiedad
+                    id_perfil_casero: propiedad.perfil_id // Aseguramos que el casero esté vinculado
                 })
-                .eq('id_perfil_inquilino', currentUser.id); // Cambiado de id_perfil
+                .eq('id_perfil_inquilino', currentUser.id);
             relacionError = error;
         } else {
             // 3. Crear nueva vinculación
-            // Nota: Para que el casero vea al inquilino, aquí deberíamos 
-            // haber buscado antes el casero_id de la tabla propiedades.
             const { error } = await _supabase
                 .from('perfil_propiedades')
                 .insert({
-                    id_perfil_inquilino: currentUser.id, // Cambiado de id_perfil
-                    id_propiedad: reference
+                    id_perfil_inquilino: currentUser.id,
+                    id_perfil_casero: propiedad.perfil_id,
+                    codigo_propiedad: reference // CAMBIADO: de id_propiedad a codigo_propiedad
                 });
             relacionError = error;
         }
 
         if (relacionError) throw relacionError;
 
-        // Actualizar la interfaz
+        // --- RESTO DE TU LÓGICA DE UI INTACTA ---
         document.getElementById('user-address').value = propiedad.direccion_completa;
         document.getElementById('user-reference').value = reference;
 
-        // También la actualizamos en el formulario de incidencias (home)
         if (document.getElementById('inc-address')) {
             document.getElementById('inc-address').value = propiedad.direccion_completa;
         }
@@ -88,7 +87,6 @@ async function saveUserData() {
         btn.innerHTML = '<i class="fa-solid fa-check"></i> ¡Listo!';
         btn.classList.add('success');
 
-        // Volvemos a la home después de un momento
         setTimeout(() => {
             btn.classList.remove('success');
             btn.innerHTML = 'Guardar y Vincular';
