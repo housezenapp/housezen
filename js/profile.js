@@ -1,3 +1,81 @@
+async function loadProfileData() {
+    if (!currentUser) {
+        const { data: { session } } = await _supabase.auth.getSession();
+        if (session) currentUser = session.user;
+        else return;
+    }
+
+    try {
+        // Cargar el perfil completo
+        const { data: currentProfile, error: profileError } = await _supabase
+            .from('perfiles')
+            .select('*')
+            .eq('id', currentUser.id)
+            .maybeSingle();
+
+        if (profileError) {
+            console.error('Error loading profile:', profileError);
+            return;
+        }
+
+        // Cargar la propiedad vinculada desde perfil_propiedades
+        const { data: vinculacion, error: vinculacionError } = await _supabase
+            .from('perfil_propiedades')
+            .select('codigo_propiedad')
+            .eq('id_perfil_inquilino', currentUser.id)
+            .maybeSingle();
+
+        if (vinculacionError) {
+            console.error('Error loading property link:', vinculacionError);
+        }
+
+        // Si hay vinculación, obtener los datos de la propiedad
+        let propiedadData = null;
+        if (vinculacion && vinculacion.codigo_propiedad) {
+            const { data: propiedad, error: propError } = await _supabase
+                .from('propiedades')
+                .select('id, direccion_completa')
+                .eq('id', vinculacion.codigo_propiedad)
+                .maybeSingle();
+
+            if (propError) {
+                console.error('Error loading property:', propError);
+            } else {
+                propiedadData = propiedad;
+            }
+        }
+
+        // Cargar datos en el formulario de perfil
+        if (currentProfile) {
+            if (currentProfile.telefono) {
+                document.getElementById('user-phone').value = currentProfile.telefono;
+            }
+        }
+
+        if (vinculacion && vinculacion.codigo_propiedad) {
+            document.getElementById('user-reference').value = vinculacion.codigo_propiedad;
+        }
+
+        if (propiedadData) {
+            document.getElementById('user-address').value = propiedadData.direccion_completa;
+        }
+
+        // También actualizar los campos de incidencias si existen
+        if (currentProfile && currentProfile.telefono) {
+            const incPhone = document.getElementById('inc-phone');
+            if (incPhone) incPhone.value = currentProfile.telefono;
+        }
+
+        if (propiedadData) {
+            const incAddress = document.getElementById('inc-address');
+            if (incAddress) incAddress.value = propiedadData.direccion_completa;
+        }
+
+    } catch (err) {
+        console.error('Error loading profile data:', err);
+    }
+}
+
 async function saveUserData() {
     // 1. Capturamos los datos del nuevo HTML
     const reference = document.getElementById('user-reference').value.trim().toUpperCase();
@@ -82,6 +160,9 @@ async function saveUserData() {
         if (document.getElementById('inc-phone')) {
             document.getElementById('inc-phone').value = phone;
         }
+
+        // Ocultar el modal de setup si estaba visible
+        document.getElementById('setup-modal').style.display = 'none';
 
         showToast("¡Vivienda vinculada correctamente!");
         btn.innerHTML = '<i class="fa-solid fa-check"></i> ¡Listo!';

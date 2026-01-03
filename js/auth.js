@@ -112,7 +112,7 @@ async function handleUserSession(session) {
         // Cargar la propiedad vinculada desde perfil_propiedades
         const { data: vinculacion, error: vinculacionError } = await _supabase
             .from('perfil_propiedades')
-            .select('id_propiedad')
+            .select('codigo_propiedad')
             .eq('id_perfil_inquilino', currentUser.id)
             .maybeSingle();
 
@@ -120,13 +120,13 @@ async function handleUserSession(session) {
             console.error('Error loading property link:', vinculacionError);
         }
 
-        // Si hay vinculación, obtener los datos de la propiedad
+        // Si hay vinculación, obtener los datos de la propiedad usando el código
         let propiedadData = null;
-        if (vinculacion && vinculacion.id_propiedad) {
+        if (vinculacion && vinculacion.codigo_propiedad) {
             const { data: propiedad, error: propError } = await _supabase
                 .from('propiedades')
                 .select('id, direccion_completa')
-                .eq('id', vinculacion.id_propiedad)
+                .eq('id', vinculacion.codigo_propiedad)
                 .maybeSingle();
 
             if (propError) {
@@ -137,13 +137,18 @@ async function handleUserSession(session) {
         }
 
         // Verificar si el perfil está completo
-        if (!currentProfile || !currentProfile.telefono || !propiedadData) {
+        const isProfileComplete = currentProfile && currentProfile.telefono && vinculacion && vinculacion.codigo_propiedad && propiedadData;
+        
+        if (!isProfileComplete) {
             document.getElementById('setup-modal').style.display = 'flex';
         } else {
+            // Ocultar el modal si el perfil está completo
+            document.getElementById('setup-modal').style.display = 'none';
+            
             // Cargar datos de la propiedad
             document.getElementById('inc-address').value = propiedadData.direccion_completa;
             document.getElementById('user-address').value = propiedadData.direccion_completa;
-            document.getElementById('user-reference').value = propiedadData.id;
+            document.getElementById('user-reference').value = vinculacion.codigo_propiedad;
 
             // Cargar teléfono del perfil
             document.getElementById('inc-phone').value = currentProfile.telefono;

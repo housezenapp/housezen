@@ -22,6 +22,10 @@ function showPage(pageId) {
         renderIncidents();
     }
 
+    if (pageId === 'profile') {
+        loadProfileData();
+    }
+
     if (document.getElementById('sidebar').classList.contains('active')) {
         toggleMenu();
     }
