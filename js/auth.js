@@ -72,8 +72,23 @@ async function initializeAuth() {
 
             // IMPORTANTE: Recargar datos de perfil y propiedad después de renovar token
             await reloadUserData();
-        } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
-            console.log('%c🚪 Sesión cerrada', 'color: red; font-weight: bold;');
+        } else if (event === 'SIGNED_OUT') {
+            // Solo cerrar sesión si realmente fue iniciado por el usuario (no automático)
+            console.log('%c🚪 Evento SIGNED_OUT recibido', 'color: red; font-weight: bold;');
+
+            // Verificar si realmente no hay sesión
+            const { data: { session: currentSession } } = await _supabase.auth.getSession();
+
+            if (!currentSession) {
+                console.log('%c✓ Confirmado: no hay sesión, cerrando', 'color: red;');
+                document.getElementById('login-page').style.display = 'flex';
+                document.getElementById('app-content').style.display = 'none';
+                document.getElementById('setup-modal').style.display = 'none';
+            } else {
+                console.log('%c⚠️ Falsa alarma: sesión todavía existe, ignorando SIGNED_OUT', 'color: orange; font-weight: bold;');
+            }
+        } else if (event === 'USER_DELETED') {
+            console.log('%c🚪 Usuario eliminado', 'color: red; font-weight: bold;');
             document.getElementById('login-page').style.display = 'flex';
             document.getElementById('app-content').style.display = 'none';
             document.getElementById('setup-modal').style.display = 'none';
