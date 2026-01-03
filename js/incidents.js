@@ -115,13 +115,6 @@ async function handleSubmit(e) {
     e.preventDefault();
     if (isSubmitting) return;
 
-    // Validar sesión antes de enviar
-    const sessionValid = await ensureValidSession();
-    if (!sessionValid) {
-        showToast('Sesión expirada. Inicia sesión de nuevo.');
-        return;
-    }
-
     const category = e.target.querySelector('input[name="category"]:checked');
     const urgency = document.getElementById('urgency-input').value;
     const title = e.target.title.value.trim();
@@ -175,9 +168,20 @@ async function handleSubmit(e) {
     console.log('📥 Respuesta:', { error });
 
     if (error) {
-        showToast('Error al enviar');
+        console.error('Error details:', error);
+
+        // Si es un error de autenticación, mostrar mensaje específico
+        if (error.message && error.message.includes('JWT')) {
+            showToast('Sesión expirada. Por favor, inicia sesión de nuevo.');
+            setTimeout(() => {
+                window.location.reload();
+            }, 2000);
+        } else {
+            showToast('Error al enviar: ' + (error.message || 'Desconocido'));
+        }
+
         btn.disabled = false;
-        btn.innerHTML = 'Enviar a Housezen <i class="fa-solid fa-paper-plane"></i>';
+        btn.innerHTML = 'Enviar Reporte <i class="fa-solid fa-paper-plane"></i>';
         isSubmitting = false;
     } else {
         btn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Enviado correctamente';
@@ -211,21 +215,6 @@ async function handleSubmit(e) {
 async function renderIncidents() {
     const container = document.getElementById('incidents-list-container');
 
-    // Validar sesión antes de cargar incidencias
-    const sessionValid = await ensureValidSession();
-    if (!sessionValid) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <i class="fa-solid fa-triangle-exclamation"></i>
-                <div class="empty-state-text">Sesión expirada</div>
-                <button class="submit-btn" style="margin-top: 20px; max-width: 250px;" onclick="logout()">
-                    <i class="fa-solid fa-right-to-bracket"></i> Iniciar sesión
-                </button>
-            </div>
-        `;
-        return;
-    }
-
     const localData = localStorage.getItem('cache_incidencias');
     if (localData) {
         const incidents = JSON.parse(localData);
@@ -252,7 +241,18 @@ async function renderIncidents() {
             .eq('user_id', currentUser.id)
             .order('created_at', { ascending: false });
 
-        if (error) throw error;
+        if (error) {
+            console.error("Error loading incidents:", error);
+
+            // Si es un error de autenticación, recargar página
+            if (error.message && error.message.includes('JWT')) {
+                showToast('Sesión expirada. Recargando...');
+                setTimeout(() => window.location.reload(), 1500);
+                return;
+            }
+
+            throw error;
+        }
 
         localStorage.setItem('cache_incidencias', JSON.stringify(data));
         dibujarIncidencias(data, false);

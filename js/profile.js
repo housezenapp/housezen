@@ -1,11 +1,4 @@
 async function loadProfileData() {
-    // Validar sesión antes de cargar perfil
-    const sessionValid = await ensureValidSession();
-    if (!sessionValid) {
-        showToast('Sesión expirada. Inicia sesión de nuevo.');
-        return;
-    }
-
     if (!currentUser) {
         const { data: { session } } = await _supabase.auth.getSession();
         if (session) currentUser = session.user;
@@ -84,13 +77,6 @@ async function loadProfileData() {
 }
 
 async function saveUserData() {
-    // Validar sesión antes de guardar
-    const sessionValid = await ensureValidSession();
-    if (!sessionValid) {
-        showToast('Sesión expirada. Inicia sesión de nuevo.');
-        return;
-    }
-
     // 1. Capturamos los datos del nuevo HTML
     const reference = document.getElementById('user-reference').value.trim().toUpperCase();
     const phone = document.getElementById('user-phone').value.trim();

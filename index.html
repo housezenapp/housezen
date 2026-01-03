@@ -264,9 +264,34 @@
 
     <script src="js/config.js?v=1"></script>
     <script src="js/ui.js?v=1"></script>
-    <script src="js/auth.js?v=4"></script>
-    <script src="js/profile.js?v=2"></script>
-    <script src="js/incidents.js?v=6"></script>
+    <script src="js/auth.js?v=6"></script>
+    <script src="js/profile.js?v=3"></script>
+    <script src="js/incidents.js?v=7"></script>
     <script src="js/app.js?v=1"></script>
+
+    <script>
+        // Mensaje de ayuda en consola
+        console.log('%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'color: #2A9D8F;');
+        console.log('%c🏠 HOUSEZEN - Monitor de Sesión Activado', 'background: #2A9D8F; color: white; padding: 10px; border-radius: 4px; font-weight: bold; font-size: 16px;');
+        console.log('%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'color: #2A9D8F;');
+        console.log('');
+        console.log('%c📋 Comandos disponibles:', 'font-weight: bold; font-size: 14px; color: #264653;');
+        console.log('');
+        console.log('%c  getSessionInfo()', 'background: #E8F5E9; color: #2E7D32; padding: 4px 8px; border-radius: 3px; font-family: monospace;');
+        console.log('    → Muestra información detallada de la sesión actual');
+        console.log('');
+        console.log('%c  _supabase.auth.getSession()', 'background: #E8F5E9; color: #2E7D32; padding: 4px 8px; border-radius: 3px; font-family: monospace;');
+        console.log('    → Obtiene la sesión actual de Supabase');
+        console.log('');
+        console.log('%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'color: #2A9D8F;');
+        console.log('');
+        console.log('%c💡 Eventos monitoreados automáticamente:', 'font-weight: bold; color: #264653;');
+        console.log('  • Inicio de sesión (SIGNED_IN)');
+        console.log('  • Renovación de token (TOKEN_REFRESHED) ✨');
+        console.log('  • Cierre de sesión (SIGNED_OUT)');
+        console.log('  • Cambio de pestaña (visibilitychange)');
+        console.log('  • Advertencias de expiración (cada 30s)');
+        console.log('');
+    </script>
 </body>
 </html>

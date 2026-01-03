@@ -33,41 +33,61 @@ async function logout() {
 
 async function initializeAuth() {
     _supabase.auth.onAuthStateChange(async (event, session) => {
-        console.log('Auth state change:', event);
+        // Log detallado de eventos de autenticación
+        console.log('%c🔐 AUTH EVENT', 'background: #2A9D8F; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold;', event);
+
+        if (session) {
+            const expiresAt = new Date(session.expires_at * 1000);
+            const now = new Date();
+            const timeUntilExpiry = Math.floor((expiresAt - now) / 1000 / 60); // minutos
+
+            console.log('%c📊 Session Info:', 'color: #2A9D8F; font-weight: bold;');
+            console.log('  • Usuario:', session.user.email);
+            console.log('  • Token expira:', expiresAt.toLocaleString('es-ES'));
+            console.log('  • Tiempo restante:', timeUntilExpiry, 'minutos');
+            console.log('  • Access Token (primeros 20 chars):', session.access_token.substring(0, 20) + '...');
+        } else {
+            console.log('%c⚠️ No session data', 'color: orange; font-weight: bold;');
+        }
 
         if (event === 'SIGNED_IN' && session) {
+            console.log('%c✅ Usuario ha iniciado sesión', 'color: green; font-weight: bold;');
             await handleUserSession(session);
-        } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED' || event === 'TOKEN_REFRESHED') {
-            if (event === 'TOKEN_REFRESHED' && session) {
-                // Token refrescado correctamente, actualizar usuario actual
-                currentUser = session.user;
-                console.log('Token refreshed successfully');
-            } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
-                document.getElementById('login-page').style.display = 'flex';
-                document.getElementById('app-content').style.display = 'none';
-                document.getElementById('setup-modal').style.display = 'none';
-            }
+        } else if (event === 'TOKEN_REFRESHED' && session) {
+            // Token refrescado correctamente, actualizar usuario actual
+            currentUser = session.user;
+            console.log('%c🔄 TOKEN RENOVADO EXITOSAMENTE', 'background: #4CAF50; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold;');
+            console.log('  • Nuevo token obtenido');
+            console.log('  • Session válida hasta:', new Date(session.expires_at * 1000).toLocaleString('es-ES'));
+        } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+            console.log('%c🚪 Sesión cerrada', 'color: red; font-weight: bold;');
+            document.getElementById('login-page').style.display = 'flex';
+            document.getElementById('app-content').style.display = 'none';
+            document.getElementById('setup-modal').style.display = 'none';
         }
     });
 
     try {
+        console.log('%c🚀 Inicializando autenticación...', 'background: #264653; color: white; padding: 4px 8px; border-radius: 4px;');
         const { data: { session }, error } = await _supabase.auth.getSession();
 
         if (error) {
-            console.error('Error getting session:', error);
+            console.error('%c❌ Error obteniendo sesión:', 'color: red; font-weight: bold;', error);
             document.getElementById('login-page').style.display = 'flex';
             document.getElementById('app-content').style.display = 'none';
             return;
         }
 
         if (session) {
+            console.log('%c✓ Sesión existente encontrada', 'color: green;');
             await handleUserSession(session);
         } else {
+            console.log('%c⚠️ No hay sesión activa', 'color: orange;');
             document.getElementById('login-page').style.display = 'flex';
             document.getElementById('app-content').style.display = 'none';
         }
     } catch (err) {
-        console.error('Error initializing auth:', err);
+        console.error('%c❌ Error inicializando auth:', 'color: red; font-weight: bold;', err);
         document.getElementById('login-page').style.display = 'flex';
         document.getElementById('app-content').style.display = 'none';
     }
@@ -76,14 +96,19 @@ async function initializeAuth() {
 
     // Escuchar cuando el usuario vuelve a la pestaña para refrescar la sesión
     setupVisibilityListener();
+
+    // Iniciar monitor de expiración de token
+    startTokenExpiryMonitor();
 }
 
 // Nueva función para manejar visibilidad de la página
 function setupVisibilityListener() {
     document.addEventListener('visibilitychange', async () => {
         if (!document.hidden && authInitialized) {
-            console.log('Tab became visible, checking session...');
+            console.log('%c👁️ Pestaña visible de nuevo', 'background: #E67E22; color: white; padding: 4px 8px; border-radius: 4px;');
             await refreshSessionIfNeeded();
+        } else if (document.hidden) {
+            console.log('%c😴 Pestaña oculta', 'color: #95A5A6;');
         }
     });
 }
@@ -91,47 +116,93 @@ function setupVisibilityListener() {
 // Nueva función para refrescar la sesión si es necesario
 async function refreshSessionIfNeeded() {
     try {
-        const { data: { session }, error } = await _supabase.auth.getSession();
+        console.log('%c🔄 Intentando refrescar sesión...', 'background: #3498DB; color: white; padding: 4px 8px; border-radius: 4px;');
+
+        // Usar refreshSession en lugar de getSession para forzar renovación
+        const { data, error } = await _supabase.auth.refreshSession();
 
         if (error) {
-            console.error('Error checking session:', error);
-            // Si hay error al obtener sesión, redirigir al login
-            logout();
+            console.error('%c❌ Error refrescando sesión:', 'color: red; font-weight: bold;', error);
             return;
         }
 
-        if (!session) {
-            console.log('No active session, redirecting to login');
-            logout();
-            return;
+        if (data.session) {
+            console.log('%c✅ Sesión refrescada correctamente', 'color: green; font-weight: bold;');
+            // El currentUser se actualiza automáticamente vía onAuthStateChange (evento TOKEN_REFRESHED)
         }
-
-        // Actualizar currentUser con la sesión más reciente
-        currentUser = session.user;
-        console.log('Session validated successfully');
 
     } catch (err) {
-        console.error('Error refreshing session:', err);
+        console.error('%c❌ Error en refreshSessionIfNeeded:', 'color: red; font-weight: bold;', err);
     }
 }
 
-// Nueva función para validar sesión antes de operaciones críticas
-async function ensureValidSession() {
-    try {
-        const { data: { session }, error } = await _supabase.auth.getSession();
+// Monitor de expiración de token
+let tokenExpiryInterval = null;
 
-        if (error || !session) {
-            console.error('Invalid session detected');
-            showToast('Sesión expirada. Por favor, inicia sesión de nuevo.');
-            setTimeout(() => logout(), 1500);
-            return false;
+function startTokenExpiryMonitor() {
+    // Limpiar intervalo anterior si existe
+    if (tokenExpiryInterval) {
+        clearInterval(tokenExpiryInterval);
+    }
+
+    // Revisar el estado cada 30 segundos
+    tokenExpiryInterval = setInterval(async () => {
+        try {
+            const { data: { session } } = await _supabase.auth.getSession();
+
+            if (session) {
+                const expiresAt = new Date(session.expires_at * 1000);
+                const now = new Date();
+                const minutesLeft = Math.floor((expiresAt - now) / 1000 / 60);
+                const secondsLeft = Math.floor((expiresAt - now) / 1000) % 60;
+
+                if (minutesLeft <= 5) {
+                    console.log(`%c⏰ Token expira pronto: ${minutesLeft}m ${secondsLeft}s`, 'background: #E74C3C; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold;');
+                } else if (minutesLeft <= 15) {
+                    console.log(`%c⏰ Token expira en: ${minutesLeft}m ${secondsLeft}s`, 'background: #F39C12; color: white; padding: 4px 8px; border-radius: 4px;');
+                }
+            }
+        } catch (err) {
+            console.error('Error en monitor de expiración:', err);
         }
+    }, 30000); // Cada 30 segundos
+}
 
-        currentUser = session.user;
-        return true;
-    } catch (err) {
-        console.error('Error validating session:', err);
-        return false;
+// Función para obtener info de sesión actual (útil para debugging)
+window.getSessionInfo = async function() {
+    const { data: { session }, error } = await _supabase.auth.getSession();
+
+    if (error) {
+        console.error('%c❌ Error:', 'color: red; font-weight: bold;', error);
+        return;
+    }
+
+    if (session) {
+        const expiresAt = new Date(session.expires_at * 1000);
+        const now = new Date();
+        const minutesLeft = Math.floor((expiresAt - now) / 1000 / 60);
+
+        console.log('%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'color: #2A9D8F;');
+        console.log('%c📊 INFORMACIÓN DE SESIÓN ACTUAL', 'background: #2A9D8F; color: white; padding: 8px; border-radius: 4px; font-weight: bold; font-size: 14px;');
+        console.log('%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'color: #2A9D8F;');
+        console.log('');
+        console.log('%c👤 Usuario:', 'font-weight: bold; color: #2A9D8F;', session.user.email);
+        console.log('%c🆔 User ID:', 'font-weight: bold; color: #2A9D8F;', session.user.id);
+        console.log('');
+        console.log('%c🔑 Token Info:', 'font-weight: bold; color: #264653;');
+        console.log('  • Access Token:', session.access_token.substring(0, 30) + '...');
+        console.log('  • Refresh Token:', session.refresh_token.substring(0, 30) + '...');
+        console.log('');
+        console.log('%c⏰ Expiración:', 'font-weight: bold; color: #E67E22;');
+        console.log('  • Expira el:', expiresAt.toLocaleString('es-ES'));
+        console.log('  • Tiempo restante:', minutesLeft, 'minutos');
+        console.log('');
+        console.log('%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'color: #2A9D8F;');
+
+        return session;
+    } else {
+        console.log('%c⚠️ No hay sesión activa', 'background: orange; color: white; padding: 4px 8px; border-radius: 4px;');
+        return null;
     }
 }
 
