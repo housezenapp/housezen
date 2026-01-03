@@ -115,6 +115,13 @@ async function handleSubmit(e) {
     e.preventDefault();
     if (isSubmitting) return;
 
+    // Validar sesión antes de enviar
+    const sessionValid = await ensureValidSession();
+    if (!sessionValid) {
+        showToast('Sesión expirada. Inicia sesión de nuevo.');
+        return;
+    }
+
     const category = e.target.querySelector('input[name="category"]:checked');
     const urgency = document.getElementById('urgency-input').value;
     const title = e.target.title.value.trim();
@@ -203,6 +210,21 @@ async function handleSubmit(e) {
 
 async function renderIncidents() {
     const container = document.getElementById('incidents-list-container');
+
+    // Validar sesión antes de cargar incidencias
+    const sessionValid = await ensureValidSession();
+    if (!sessionValid) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <div class="empty-state-text">Sesión expirada</div>
+                <button class="submit-btn" style="margin-top: 20px; max-width: 250px;" onclick="logout()">
+                    <i class="fa-solid fa-right-to-bracket"></i> Iniciar sesión
+                </button>
+            </div>
+        `;
+        return;
+    }
 
     const localData = localStorage.getItem('cache_incidencias');
     if (localData) {

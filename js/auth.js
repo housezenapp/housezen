@@ -33,12 +33,20 @@ async function logout() {
 
 async function initializeAuth() {
     _supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log('Auth state change:', event);
+
         if (event === 'SIGNED_IN' && session) {
             await handleUserSession(session);
-        } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
-            document.getElementById('login-page').style.display = 'flex';
-            document.getElementById('app-content').style.display = 'none';
-            document.getElementById('setup-modal').style.display = 'none';
+        } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED' || event === 'TOKEN_REFRESHED') {
+            if (event === 'TOKEN_REFRESHED' && session) {
+                // Token refrescado correctamente, actualizar usuario actual
+                currentUser = session.user;
+                console.log('Token refreshed successfully');
+            } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+                document.getElementById('login-page').style.display = 'flex';
+                document.getElementById('app-content').style.display = 'none';
+                document.getElementById('setup-modal').style.display = 'none';
+            }
         }
     });
 
@@ -65,6 +73,66 @@ async function initializeAuth() {
     }
 
     authInitialized = true;
+
+    // Escuchar cuando el usuario vuelve a la pestaña para refrescar la sesión
+    setupVisibilityListener();
+}
+
+// Nueva función para manejar visibilidad de la página
+function setupVisibilityListener() {
+    document.addEventListener('visibilitychange', async () => {
+        if (!document.hidden && authInitialized) {
+            console.log('Tab became visible, checking session...');
+            await refreshSessionIfNeeded();
+        }
+    });
+}
+
+// Nueva función para refrescar la sesión si es necesario
+async function refreshSessionIfNeeded() {
+    try {
+        const { data: { session }, error } = await _supabase.auth.getSession();
+
+        if (error) {
+            console.error('Error checking session:', error);
+            // Si hay error al obtener sesión, redirigir al login
+            logout();
+            return;
+        }
+
+        if (!session) {
+            console.log('No active session, redirecting to login');
+            logout();
+            return;
+        }
+
+        // Actualizar currentUser con la sesión más reciente
+        currentUser = session.user;
+        console.log('Session validated successfully');
+
+    } catch (err) {
+        console.error('Error refreshing session:', err);
+    }
+}
+
+// Nueva función para validar sesión antes de operaciones críticas
+async function ensureValidSession() {
+    try {
+        const { data: { session }, error } = await _supabase.auth.getSession();
+
+        if (error || !session) {
+            console.error('Invalid session detected');
+            showToast('Sesión expirada. Por favor, inicia sesión de nuevo.');
+            setTimeout(() => logout(), 1500);
+            return false;
+        }
+
+        currentUser = session.user;
+        return true;
+    } catch (err) {
+        console.error('Error validating session:', err);
+        return false;
+    }
 }
 
 async function handleUserSession(session) {
