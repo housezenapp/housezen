@@ -15,28 +15,18 @@ async function login() {
 }
 
 async function logout() {
-    console.log('%c🚪 Intentando cerrar sesión...', 'background: #E74C3C; color: white; padding: 4px 8px; border-radius: 4px;');
+    console.log('%c🚪 Cerrando sesión...', 'background: #E74C3C; color: white; padding: 4px 8px; border-radius: 4px;');
 
-    try {
-        // Timeout de 5 segundos para el signOut
-        const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout')), 5000)
-        );
-
-        const signOutPromise = _supabase.auth.signOut();
-
-        await Promise.race([signOutPromise, timeoutPromise]);
-
-        console.log('%c✓ Sesión cerrada con éxito', 'color: green;');
-    } catch (error) {
-        console.error('%c⚠️ Error o timeout al cerrar sesión:', 'color: orange;', error.message);
-        // Continuar de todos modos
-    }
-
-    // Limpiar storage y redirigir siempre, incluso si hubo error
+    // Limpiar storage inmediatamente
     localStorage.clear();
     sessionStorage.clear();
 
+    // Intentar cerrar sesión en Supabase sin esperar (fire and forget)
+    _supabase.auth.signOut().catch(err => {
+        console.log('%c⚠️ Error al cerrar sesión en Supabase (ignorado):', 'color: orange;', err.message);
+    });
+
+    // Redirigir inmediatamente
     console.log('%c↩️ Redirigiendo al login...', 'color: #3498DB;');
     window.location.href = "https://housezenapp.github.io/housezen/";
 }
