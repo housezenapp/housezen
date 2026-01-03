@@ -15,20 +15,30 @@ async function login() {
 }
 
 async function logout() {
-    console.log("Intentando cerrar sesión...");
+    console.log('%c🚪 Intentando cerrar sesión...', 'background: #E74C3C; color: white; padding: 4px 8px; border-radius: 4px;');
 
-    const { error } = await _supabase.auth.signOut();
+    try {
+        // Timeout de 5 segundos para el signOut
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Timeout')), 5000)
+        );
 
+        const signOutPromise = _supabase.auth.signOut();
+
+        await Promise.race([signOutPromise, timeoutPromise]);
+
+        console.log('%c✓ Sesión cerrada con éxito', 'color: green;');
+    } catch (error) {
+        console.error('%c⚠️ Error o timeout al cerrar sesión:', 'color: orange;', error.message);
+        // Continuar de todos modos
+    }
+
+    // Limpiar storage y redirigir siempre, incluso si hubo error
     localStorage.clear();
     sessionStorage.clear();
 
-    if (error) {
-        console.error("Error al cerrar sesión:", error.message);
-        window.location.href = "https://housezenapp.github.io/housezen/";
-    } else {
-        console.log("Sesión cerrada con éxito");
-        window.location.href = "https://housezenapp.github.io/housezen/";
-    }
+    console.log('%c↩️ Redirigiendo al login...', 'color: #3498DB;');
+    window.location.href = "https://housezenapp.github.io/housezen/";
 }
 
 async function initializeAuth() {
@@ -59,6 +69,9 @@ async function initializeAuth() {
             console.log('%c🔄 TOKEN RENOVADO EXITOSAMENTE', 'background: #4CAF50; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold;');
             console.log('  • Nuevo token obtenido');
             console.log('  • Session válida hasta:', new Date(session.expires_at * 1000).toLocaleString('es-ES'));
+
+            // IMPORTANTE: Recargar datos de perfil y propiedad después de renovar token
+            await reloadUserData();
         } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
             console.log('%c🚪 Sesión cerrada', 'color: red; font-weight: bold;');
             document.getElementById('login-page').style.display = 'flex';
@@ -106,34 +119,22 @@ function setupVisibilityListener() {
     document.addEventListener('visibilitychange', async () => {
         if (!document.hidden && authInitialized) {
             console.log('%c👁️ Pestaña visible de nuevo', 'background: #E67E22; color: white; padding: 4px 8px; border-radius: 4px;');
-            await refreshSessionIfNeeded();
+
+            // NO llamar a refreshSession - Supabase lo maneja automáticamente
+            // Solo verificar que la sesión existe y recargar datos del usuario
+            const { data: { session } } = await _supabase.auth.getSession();
+
+            if (session) {
+                console.log('%c✓ Sesión válida detectada', 'color: green;');
+                // Recargar datos del usuario sin forzar refresh
+                await reloadUserData();
+            } else {
+                console.log('%c⚠️ No hay sesión activa', 'color: orange;');
+            }
         } else if (document.hidden) {
             console.log('%c😴 Pestaña oculta', 'color: #95A5A6;');
         }
     });
-}
-
-// Nueva función para refrescar la sesión si es necesario
-async function refreshSessionIfNeeded() {
-    try {
-        console.log('%c🔄 Intentando refrescar sesión...', 'background: #3498DB; color: white; padding: 4px 8px; border-radius: 4px;');
-
-        // Usar refreshSession en lugar de getSession para forzar renovación
-        const { data, error } = await _supabase.auth.refreshSession();
-
-        if (error) {
-            console.error('%c❌ Error refrescando sesión:', 'color: red; font-weight: bold;', error);
-            return;
-        }
-
-        if (data.session) {
-            console.log('%c✅ Sesión refrescada correctamente', 'color: green; font-weight: bold;');
-            // El currentUser se actualiza automáticamente vía onAuthStateChange (evento TOKEN_REFRESHED)
-        }
-
-    } catch (err) {
-        console.error('%c❌ Error en refreshSessionIfNeeded:', 'color: red; font-weight: bold;', err);
-    }
 }
 
 // Monitor de expiración de token
@@ -166,6 +167,76 @@ function startTokenExpiryMonitor() {
             console.error('Error en monitor de expiración:', err);
         }
     }, 30000); // Cada 30 segundos
+}
+
+// Función para recargar datos del usuario después de refrescar token
+async function reloadUserData() {
+    try {
+        console.log('%c🔃 Recargando datos del usuario...', 'color: #3498DB;');
+
+        if (!currentUser) {
+            console.log('%c⚠️ No hay currentUser, saltando recarga', 'color: orange;');
+            return;
+        }
+
+        // Cargar el perfil completo
+        const { data: currentProfile, error: profileError } = await _supabase
+            .from('perfiles')
+            .select('*')
+            .eq('id', currentUser.id)
+            .maybeSingle();
+
+        if (profileError) {
+            console.error('Error loading profile:', profileError);
+            return;
+        }
+
+        // Cargar la propiedad vinculada
+        const { data: vinculacion, error: vinculacionError } = await _supabase
+            .from('perfil_propiedades')
+            .select('codigo_propiedad')
+            .eq('id_perfil_inquilino', currentUser.id)
+            .maybeSingle();
+
+        if (vinculacionError) {
+            console.error('Error loading property link:', vinculacionError);
+        }
+
+        // Si hay vinculación, obtener los datos de la propiedad
+        let propiedadData = null;
+        if (vinculacion && vinculacion.codigo_propiedad) {
+            const { data: propiedad, error: propError } = await _supabase
+                .from('propiedades')
+                .select('id, direccion_completa')
+                .eq('id', vinculacion.codigo_propiedad)
+                .maybeSingle();
+
+            if (propError) {
+                console.error('Error loading property:', propError);
+            } else {
+                propiedadData = propiedad;
+            }
+        }
+
+        // Actualizar los campos del formulario de incidencias
+        const incAddress = document.getElementById('inc-address');
+        const incPhone = document.getElementById('inc-phone');
+
+        if (propiedadData && incAddress) {
+            incAddress.value = propiedadData.direccion_completa;
+            console.log('  ✓ Dirección actualizada:', propiedadData.direccion_completa);
+        }
+
+        if (currentProfile && currentProfile.telefono && incPhone) {
+            incPhone.value = currentProfile.telefono;
+            console.log('  ✓ Teléfono actualizado:', currentProfile.telefono);
+        }
+
+        console.log('%c✅ Datos del usuario recargados', 'color: green; font-weight: bold;');
+
+    } catch (err) {
+        console.error('%c❌ Error recargando datos del usuario:', 'color: red;', err);
+    }
 }
 
 // Función para obtener info de sesión actual (útil para debugging)

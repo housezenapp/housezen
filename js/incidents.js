@@ -113,22 +113,27 @@ function setupPriorityButtons() {
 
 async function handleSubmit(e) {
     e.preventDefault();
-    if (isSubmitting) return;
+
+    console.log('%c📝 INICIO DE ENVÍO DE INCIDENCIA', 'background: #9B59B6; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold;');
+
+    if (isSubmitting) {
+        console.log('%c⚠️ Ya hay un envío en proceso', 'color: orange;');
+        return;
+    }
 
     const category = e.target.querySelector('input[name="category"]:checked');
     const urgency = document.getElementById('urgency-input').value;
     const title = e.target.title.value.trim();
     const description = e.target.description.value.trim();
 
-    console.log('Validación del formulario:', {
-        category: category ? category.value : 'NO SELECCIONADO',
-        categoryChecked: category ? 'SÍ' : 'NO',
-        urgency,
-        title,
-        description
-    });
+    console.log('%c📋 Validación del formulario:', 'color: #9B59B6; font-weight: bold;');
+    console.log('  • Categoría:', category ? category.value : 'NO SELECCIONADO');
+    console.log('  • Urgencia:', urgency || 'NO SELECCIONADO');
+    console.log('  • Título:', title || 'VACÍO');
+    console.log('  • Descripción:', description || 'VACÍO');
 
     if (!category || !urgency || !title || !description) {
+        console.error('%c❌ Validación fallida: faltan campos', 'color: red; font-weight: bold;');
         alert('Completa todos los campos: Categoría, Urgencia, Título y Descripción');
         showToast('Completa todos los campos');
         return;
@@ -139,76 +144,122 @@ async function handleSubmit(e) {
     btn.disabled = true;
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando...';
 
-    // Obtener el id de la propiedad vinculada
-    const { data: vinculacion } = await _supabase
-        .from('perfil_propiedades')
-        .select('codigo_propiedad')
-        .eq('id_perfil_inquilino', currentUser.id)
-        .maybeSingle();
+    console.log('%c🔍 Obteniendo vinculación de propiedad...', 'color: #3498DB;');
 
-    const incidenciaData = {
-        titulo: title,
-        descripcion: e.target.description.value.trim(),
-        categoria: category.value,
-        urgencia: selectedUrgency,
-        direccion: document.getElementById('inc-address').value,
-        telefono: document.getElementById('inc-phone').value,
-        user_id: currentUser.id,
-        propiedad_id: vinculacion?.codigo_propiedad || null,
-        nombre_inquilino: currentUser.user_metadata.full_name,
-        email_inquilino: currentUser.email,
-        estado: 'Enviada'
-    };
+    try {
+        // Obtener el id de la propiedad vinculada con timeout
+        const vinculacionPromise = _supabase
+            .from('perfil_propiedades')
+            .select('codigo_propiedad')
+            .eq('id_perfil_inquilino', currentUser.id)
+            .maybeSingle();
 
-    console.log('📤 Datos a enviar:', incidenciaData);
-    console.log('🔍 Tipo de propiedad_id:', typeof incidenciaData.propiedad_id);
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Timeout obteniendo vinculación')), 10000)
+        );
 
-    const { error } = await _supabase.from('incidencias').insert([incidenciaData]);
+        const { data: vinculacion, error: vinculacionError } = await Promise.race([
+            vinculacionPromise,
+            timeoutPromise
+        ]);
 
-    console.log('📥 Respuesta:', { error });
-
-    if (error) {
-        console.error('Error details:', error);
-
-        // Si es un error de autenticación, mostrar mensaje específico
-        if (error.message && error.message.includes('JWT')) {
-            showToast('Sesión expirada. Por favor, inicia sesión de nuevo.');
-            setTimeout(() => {
-                window.location.reload();
-            }, 2000);
-        } else {
-            showToast('Error al enviar: ' + (error.message || 'Desconocido'));
+        if (vinculacionError) {
+            console.error('%c❌ Error obteniendo vinculación:', 'color: red; font-weight: bold;', vinculacionError);
+            showToast('Error al obtener datos de propiedad');
+            btn.disabled = false;
+            btn.innerHTML = 'Enviar Reporte <i class="fa-solid fa-paper-plane"></i>';
+            isSubmitting = false;
+            return;
         }
 
+        console.log('  ✓ Vinculación obtenida:', vinculacion);
+
+        const incidenciaData = {
+            titulo: title,
+            descripcion: e.target.description.value.trim(),
+            categoria: category.value,
+            urgencia: selectedUrgency,
+            direccion: document.getElementById('inc-address').value,
+            telefono: document.getElementById('inc-phone').value,
+            user_id: currentUser.id,
+            propiedad_id: vinculacion?.codigo_propiedad || null,
+            nombre_inquilino: currentUser.user_metadata.full_name,
+            email_inquilino: currentUser.email,
+            estado: 'Enviada'
+        };
+
+        console.log('%c📤 Datos a enviar:', 'color: #9B59B6; font-weight: bold;');
+        console.log('  • Título:', incidenciaData.titulo);
+        console.log('  • Categoría:', incidenciaData.categoria);
+        console.log('  • Urgencia:', incidenciaData.urgencia);
+        console.log('  • Dirección:', incidenciaData.direccion);
+        console.log('  • Teléfono:', incidenciaData.telefono);
+        console.log('  • User ID:', incidenciaData.user_id);
+        console.log('  • Propiedad ID:', incidenciaData.propiedad_id, `(${typeof incidenciaData.propiedad_id})`);
+
+        console.log('%c💾 Insertando en Supabase...', 'color: #3498DB;');
+
+        const { error } = await _supabase.from('incidencias').insert([incidenciaData]);
+
+        console.log('%c📥 Respuesta de Supabase:', 'color: #9B59B6; font-weight: bold;');
+
+        if (error) {
+            console.error('%c❌ ERROR AL INSERTAR:', 'background: #E74C3C; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold;');
+            console.error('  • Código:', error.code);
+            console.error('  • Mensaje:', error.message);
+            console.error('  • Detalles:', error.details);
+            console.error('  • Hint:', error.hint);
+            console.error('  • Error completo:', error);
+
+            // Si es un error de autenticación, mostrar mensaje específico
+            if (error.message && error.message.includes('JWT')) {
+                showToast('Sesión expirada. Por favor, inicia sesión de nuevo.');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } else {
+                showToast('Error al enviar: ' + (error.message || 'Desconocido'));
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = 'Enviar Reporte <i class="fa-solid fa-paper-plane"></i>';
+            isSubmitting = false;
+        } else {
+            console.log('%c✅ INCIDENCIA CREADA EXITOSAMENTE', 'background: #27AE60; color: white; padding: 4px 8px; border-radius: 4px; font-weight: bold;');
+
+            btn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Enviado correctamente';
+            btn.classList.add('success');
+
+            setTimeout(() => {
+                e.target.reset();
+                selectedUrgency = null;
+                lastRadioChecked = null;
+                document.querySelectorAll('.priority-btn').forEach(b => b.className = 'priority-btn');
+                document.getElementById('urgency-input').value = '';
+
+                const dropdown = document.getElementById('otros-dropdown');
+                const otrosSelect = document.getElementById('otros-select');
+                const otrosRadio = document.getElementById('otros-radio');
+                const selectedDisplay = document.getElementById('otros-selected');
+                if (dropdown) dropdown.style.display = 'none';
+                if (otrosSelect) otrosSelect.selectedIndex = 0;
+                if (otrosRadio) otrosRadio.value = 'Otros';
+                if (selectedDisplay) selectedDisplay.style.display = 'none';
+
+                btn.className = 'submit-btn';
+                btn.innerHTML = 'Enviar a Housezen <i class="fa-solid fa-paper-plane"></i>';
+                btn.disabled = false;
+                isSubmitting = false;
+                showPage('incidencias');
+            }, 1500);
+        }
+
+    } catch (err) {
+        console.error('%c❌ Error inesperado:', 'color: red; font-weight: bold;', err);
+        showToast('Error inesperado: ' + err.message);
         btn.disabled = false;
         btn.innerHTML = 'Enviar Reporte <i class="fa-solid fa-paper-plane"></i>';
         isSubmitting = false;
-    } else {
-        btn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Enviado correctamente';
-        btn.classList.add('success');
-
-        setTimeout(() => {
-            e.target.reset();
-            selectedUrgency = null;
-            lastRadioChecked = null;
-            document.querySelectorAll('.priority-btn').forEach(b => b.className = 'priority-btn');
-            document.getElementById('urgency-input').value = '';
-
-            const dropdown = document.getElementById('otros-dropdown');
-            const otrosSelect = document.getElementById('otros-select');
-            const otrosRadio = document.getElementById('otros-radio');
-            const selectedDisplay = document.getElementById('otros-selected');
-            if (dropdown) dropdown.style.display = 'none';
-            if (otrosSelect) otrosSelect.selectedIndex = 0;
-            if (otrosRadio) otrosRadio.value = 'Otros';
-            if (selectedDisplay) selectedDisplay.style.display = 'none';
-
-            btn.className = 'submit-btn';
-            btn.innerHTML = 'Enviar a Housezen <i class="fa-solid fa-paper-plane"></i>';
-            btn.disabled = false;
-            isSubmitting = false;
-            showPage('incidencias');
-        }, 1500);
     }
 }
 
