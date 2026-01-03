@@ -147,21 +147,12 @@ async function handleSubmit(e) {
     console.log('%c🔍 Obteniendo vinculación de propiedad...', 'color: #3498DB;');
 
     try {
-        // Obtener el id de la propiedad vinculada con timeout
-        const vinculacionPromise = _supabase
+        // Obtener el id de la propiedad vinculada
+        const { data: vinculacion, error: vinculacionError } = await _supabase
             .from('perfil_propiedades')
             .select('codigo_propiedad')
             .eq('id_perfil_inquilino', currentUser.id)
             .maybeSingle();
-
-        const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout obteniendo vinculación')), 10000)
-        );
-
-        const { data: vinculacion, error: vinculacionError } = await Promise.race([
-            vinculacionPromise,
-            timeoutPromise
-        ]);
 
         if (vinculacionError) {
             console.error('%c❌ Error obteniendo vinculación:', 'color: red; font-weight: bold;', vinculacionError);
@@ -263,11 +254,13 @@ async function handleSubmit(e) {
     }
 }
 
-async function renderIncidents() {
+async function renderIncidents(forceRefresh = false) {
     const container = document.getElementById('incidents-list-container');
 
     const localData = localStorage.getItem('cache_incidencias');
-    if (localData) {
+
+    // Solo mostrar caché si no es un refresh forzado
+    if (localData && !forceRefresh) {
         const incidents = JSON.parse(localData);
         dibujarIncidencias(incidents, true);
     } else {
@@ -344,7 +337,7 @@ function dibujarIncidencias(data, isOffline) {
             <div class="offline-banner">
                 <i class="fa-solid fa-clock-rotate-left"></i>
                 Mostrando datos guardados.
-                <span class="refresh-link" onclick="renderIncidents()">Refrescar para ver nuevos</span>
+                <span class="refresh-link" onclick="renderIncidents(true)">Refrescar para ver nuevos</span>
             </div>
         `;
     }
