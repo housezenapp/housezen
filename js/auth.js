@@ -131,23 +131,20 @@ async function initializeAuth() {
 
 // Nueva función para manejar visibilidad de la página
 function setupVisibilityListener() {
+    let wasHidden = false;
+
     document.addEventListener('visibilitychange', async () => {
-        if (!document.hidden && authInitialized) {
+        if (!document.hidden && authInitialized && wasHidden) {
             console.log('%c👁️ Pestaña visible de nuevo', 'background: #E67E22; color: white; padding: 4px 8px; border-radius: 4px;');
 
-            // NO llamar a refreshSession - Supabase lo maneja automáticamente
-            // Solo verificar que la sesión existe y recargar datos del usuario
-            const { data: { session } } = await _supabase.auth.getSession();
+            // IMPORTANTE: Recargar la página si estuvo oculta
+            // Esto reinicia el cliente de Supabase y evita problemas de bloqueo
+            console.log('%c🔄 Recargando página para reiniciar conexión...', 'color: #3498DB;');
+            window.location.reload();
 
-            if (session) {
-                console.log('%c✓ Sesión válida detectada', 'color: green;');
-                // Recargar datos del usuario sin forzar refresh
-                await reloadUserData();
-            } else {
-                console.log('%c⚠️ No hay sesión activa', 'color: orange;');
-            }
         } else if (document.hidden) {
             console.log('%c😴 Pestaña oculta', 'color: #95A5A6;');
+            wasHidden = true;
         }
     });
 }
